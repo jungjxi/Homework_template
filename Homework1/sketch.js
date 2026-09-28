@@ -7,6 +7,8 @@
 //   2) 유틸/수학    : 투영, 타원적분, 보간
 //   3) 휠 빌더/보정 : x축 회전용 편심 무게추 휠 + 헤드리스 킥 보정
 //   4) Orbit 클래스 : 궤도 1개 = 진자형 행성 + 보이지 않는 휠
+//   4-b) SpringChain: 천장-태양-궤도들을 잇는 스프링 사슬 (모빌의 또잉~ 파동)
+//   * 공전 별     : 행성이 한 바퀴 돌 때마다 배경에 같은 색 별이 하나씩 반짝이며 생긴다
 //   5) Scheduler   : 이벤트 기반 타임라인 (스텝 단위)
 //   6) 시뮬레이션   : 고정 스텝 누적기
 //   7) 렌더        : 2.5D 투영, 깊이 정렬, 행성별 디테일
@@ -132,6 +134,55 @@ const CONFIG = {
     settleBlend: 1.2,
     stopOmega: 0.0006, // 정지 판정 |각속도| (rad/step)
     stopAngle: 0.003, // 정지 판정 |theta - 2π| (rad). 작을수록 스냅이 안 보인다
+  },
+
+  // 모빌: 천장 → 태양 → 궤도0 → … → 궤도7 을 잇는 보이지 않는 스프링 사슬.
+  // 주기적으로 태양을 아래로 튕기면 충격이 스프링을 타고 안쪽 궤도부터 바깥 궤도로 전해진다(또잉~).
+  // 각 궤도는 행성과 함께 자기 마디의 세로 변위만큼 위아래로 출렁인다.
+  mobile: {
+    x: -6000, // 화면과 무관한 먼 좌표 (휠과 겹치지 않게)
+    spacing: 60, // 사슬 마디 간격 (보이지 않음, 유닛)
+    // 태양은 무겁고 바깥 마디일수록 가볍게: 파동이 퍼지며 약해지는 것을 채찍처럼 보상해
+    // 바깥 궤도까지 출렁임이 또렷하게 전해진다 (폭 ≈ 태양 15 → 중간 6 → 해왕성 8 유닛)
+    sunMass: 6,
+    ringMass: 1, // 궤도 i 마디 질량 = ringMass * (1 + ringMassGrow * i)
+    ringMassGrow: -0.1,
+    // Matter 는 한 스텝에 제약을 (반복 10회 × 2패스) 풀기 때문에 체감 강성이 커서 아주 작은 값을 쓴다
+    stringStiffness: 0.0006, // 천장-태양 스프링의 탄성 (보이지 않음)
+    linkStiffness: 0.0008, // 궤도 사이 스프링 탄성. 작을수록 파동이 느리게 퍼진다 (현재 안→밖 ≈ 1.1초)
+    linkDamping: 0.01,
+    frictionAir: 0.012, // 다음 파동 전까지 잦아들게 (≈ 8초면 거의 정지)
+    kick: 300, // 태양을 아래로 튕기는 속도 (units/s). 출렁임 폭에 비례
+    firstAt: 6.0, // 첫 파동 (초)
+    interval: 15.0, // 파동 간격 (초). 마지막 장면이 시작되면 더 이상 튕기지 않는다
+    stopSpeed: 0.2, // 정지 판정 (units/s)
+    stopOffset: 0.05, // 정지 판정 (units)
+  },
+
+  // 공전 별: 행성이 한 바퀴 돌 때마다 배경에 같은 색 별이 하나씩 생긴다.
+  // 생길 때 한 번 반짝(코어가 커졌다 돌아오고 얇은 링이 퍼져 사라짐) → 이후 은은하게 숨 쉬듯 빛난다.
+  // 빛 번짐도 블러/그라데이션 없이 플랫한 반투명 원 3겹으로 표현.
+  lapStars: {
+    seed: 23, // 고정 시드 → 매번 같은 위치
+    sizeRatio: 0.35, // 별 코어 반경 = 행성 반경 × 0.35 (행성 크기 차이에 비례)
+    // 위치: 후보 candidates 개 중 기존 별들과 가장 멀리 떨어진 곳 (best-candidate 샘플링)
+    candidates: 24,
+    minGap: 0.09, // 이보다 가까우면(짧은 변 대비) 후보를 더 뽑는다
+    edgeMargin: 0.04, // 화면 가장자리 여백 (짧은 변 대비)
+    avoidMobile: true, // 정지 상태의 궤도 타원 안쪽은 피한다 (공전 중인 행성과 헷갈리지 않게)
+    halo: [
+      // 코어 반경 대비 크기와 밝기 — 바깥으로 갈수록 옅게
+      { size: 1.7, alpha: 0.2 },
+      { size: 2.6, alpha: 0.09 },
+      { size: 3.8, alpha: 0.04 },
+    ],
+    breathe: 0.35, // 은은한 밝기 변화 폭 (0~1)
+    breathePeriod: [4, 9], // 숨 쉬는 주기 범위 (초)
+    flashSeconds: 1.4, // 생길 때 반짝임 지속 시간
+    flashGrow: 0.9, // 반짝일 때 코어가 커지는 비율
+    flashHalo: 3.0, // 반짝일 때 빛 번짐이 밝아지는 배수
+    ringReach: 7, // 퍼지는 링의 최종 반경 (코어 대비)
+    ringAlpha: 0.7,
   },
 
   timeline: {
@@ -610,6 +661,91 @@ function wrapAngle(a) {
 }
 
 // ---------------------------------------------------------------------
+// 4-b) SpringChain — 모빌의 세로 출렁임 (또잉~ 파동)
+// ---------------------------------------------------------------------
+// 마디 0 = 태양, 마디 i+1 = 궤도 i. 중력 없이 스프링 길이 = 초기 간격이므로 정지 상태가 곧 평형이다.
+class SpringChain {
+  build(world) {
+    const M = CONFIG.mobile;
+    this.ceiling = Bodies.circle(M.x, 0, 2, {
+      isStatic: true,
+      collisionFilter: NO_COLLIDE,
+    });
+    Composite.add(world, this.ceiling);
+    this.nodes = [];
+    this.rest = [];
+    let prev = this.ceiling;
+    for (let k = 0; k <= CONFIG.planets.length; k++) {
+      const y = (k + 1) * M.spacing;
+      const b = Bodies.circle(M.x, y, 4, {
+        frictionAir: M.frictionAir,
+        collisionFilter: NO_COLLIDE,
+      });
+      Body.setMass(
+        b,
+        k === 0 ? M.sunMass : M.ringMass * (1 + M.ringMassGrow * (k - 1)),
+      );
+      const spring = Constraint.create({
+        bodyA: prev,
+        bodyB: b,
+        length: M.spacing,
+        stiffness: k === 0 ? M.stringStiffness : M.linkStiffness,
+        damping: M.linkDamping,
+      });
+      Composite.add(world, [b, spring]);
+      this.nodes.push(b);
+      this.rest.push(y);
+      prev = b;
+    }
+    this.offset = this.rest.map(() => 0);
+    this.prevOffset = this.offset.slice();
+    this.done = false;
+    this.waves = 0;
+  }
+
+  // 태양을 아래로 튕긴다
+  kick() {
+    Body.setVelocity(this.nodes[0], { x: 0, y: CONFIG.mobile.kick * STEP_SEC });
+    this.waves++;
+  }
+
+  afterStep(finaleStarted) {
+    this.prevOffset = this.offset.slice();
+    if (this.done) return false;
+    const M = CONFIG.mobile;
+    let maxV = 0;
+    let maxD = 0;
+    this.nodes.forEach((b, k) => {
+      // 세로로만 움직이게: 수치 오차로 생기는 옆 흔들림 제거
+      const vy = Body.getVelocity(b).y;
+      Body.setPosition(b, { x: M.x, y: b.position.y }, false);
+      Body.setVelocity(b, { x: 0, y: vy });
+      this.offset[k] = b.position.y - this.rest[k];
+      maxV = Math.max(maxV, Math.abs(vy) / STEP_SEC);
+      maxD = Math.max(maxD, Math.abs(this.offset[k]));
+    });
+    // 마지막 장면에서 완전히 잦아들면 평형으로 스냅하고 고정
+    if (finaleStarted && maxV < M.stopSpeed && maxD < M.stopOffset) {
+      this.nodes.forEach((b, k) => {
+        Body.setPosition(b, { x: M.x, y: this.rest[k] }, false);
+        Body.setVelocity(b, { x: 0, y: 0 });
+        Body.setStatic(b, true);
+        this.offset[k] = 0;
+      });
+      this.prevOffset = this.offset.slice();
+      this.done = true;
+      return true;
+    }
+    return false;
+  }
+
+  // 렌더용 보간 변위 (유닛)
+  at(k, alpha) {
+    return mix(this.prevOffset[k], this.offset[k], alpha);
+  }
+}
+
+// ---------------------------------------------------------------------
 // 5) Scheduler — 시간은 전부 스텝 수. 하드코딩된 절대 시각 대신 이벤트에서 예약한다
 // ---------------------------------------------------------------------
 class Scheduler {
@@ -643,10 +779,15 @@ function createSimulation() {
   const engine = createEngine();
   const orbits = CONFIG.planets.map((def, i) => new Orbit(i, def));
   orbits.forEach((o) => o.build(engine.world, calibrateWheel(o.i)));
+  const chain = new SpringChain();
+  chain.build(engine.world);
 
   const s = {
     engine,
     orbits,
+    chain,
+    lapStars: [], // 한 바퀴마다 생기는 행성 색 별 { def, x, y (0~1), born, phase }
+    lapRand: seededRandom(CONFIG.lapStars.seed),
     scheduler: new Scheduler(),
     step: 0,
     acc: 0,
@@ -663,6 +804,14 @@ function createSimulation() {
   });
   // 3) 첫 x축 회전
   sc.at(secToSteps(T.firstTurnAt), "turn 0", (step) => beginTurn(s, 0, step));
+  // 또잉~ 파동: 한 번 튕길 때마다 다음 파동을 예약. 마지막 장면부터는 멈춘다
+  const wave = (step) => {
+    if (s.finaleStarted) return;
+    chain.kick();
+    debugLog(`[${fmt(step)}] wave ${chain.waves}`);
+    sc.after(step, CONFIG.mobile.interval, "wave", wave);
+  };
+  sc.at(secToSteps(CONFIG.mobile.firstAt), "wave", wave);
 
   orbits.forEach((o) => {
     debugLog(
@@ -687,6 +836,8 @@ function handleEvent(s, o, ev, step) {
     debugLog(
       `[${fmt(step)}] orbit ${o.i} lap ${n}: ${o.laps[n - 1].toFixed(3)}s (avg ${avg.toFixed(3)}s, target ${o.def.period}s)`,
     );
+    // 한 바퀴 → 배경에 같은 색 별 하나
+    addLapStar(s, o.def, step);
   } else if (ev === "turnComplete") {
     const dur = (step - o.turnStartStep) * STEP_SEC;
     debugLog(`[${fmt(step)}] orbit ${o.i} turn complete — ${dur.toFixed(3)}s`);
@@ -733,8 +884,11 @@ function stepSimulation(s) {
   for (const o of s.orbits) {
     for (const ev of o.afterStep(s.step)) handleEvent(s, o, ev, s.step);
   }
+  if (s.chain.afterStep(s.finaleStarted))
+    debugLog(`[${fmt(s.step)}] mobile springs at rest`);
   if (
     s.finaleStarted &&
+    s.chain.done &&
     s.orbits.every((o) => o.phase === "RESTING" && o.state === "DONE")
   ) {
     s.finished = true;
@@ -790,13 +944,14 @@ function depthAlpha(zn) {
 }
 
 // 궤도 원을 N 점으로 샘플링해 투영 (ellipse() 대신 — theta 로 납작해지고 뒤집히는 모습을 그대로)
-function projectOrbit(o, ang) {
+// cy: 이 궤도의 화면 중심 y (모빌 스프링의 출렁임만큼 내려가 있다)
+function projectOrbit(o, ang, cy) {
   const pts = new Array(ringUnit.length);
   for (let k = 0; k < ringUnit.length; k++) {
     const p = project(o.r * ringUnit[k][0], o.r * ringUnit[k][1], ang);
     pts[k] = {
       x: view.cx + p.x * view.scale,
-      y: view.cy + p.y * view.scale,
+      y: cy + p.y * view.scale,
       z: p.z / o.r,
     };
   }
@@ -934,22 +1089,108 @@ function drawStars(gain) {
   ctx.restore();
 }
 
+// ---- 공전 별: 행성이 한 바퀴 돌 때마다 하나씩 ----
+// 위치는 화면 비율(0~1)로 저장 → 창 크기가 바뀌어도 같은 자리
+function addLapStar(s, def, step) {
+  const L = CONFIG.lapStars;
+  const rand = s.lapRand;
+  const m = Math.min(width, height);
+  const R = def.radius * L.sizeRatio * view.scale;
+  const pad = L.edgeMargin * m + R * 2;
+  // 정지 상태의 가장 바깥 궤도 타원(+여유): 이 안은 피한다
+  const maxTilt = Math.max(...sim.orbits.map((o) => o.tilt));
+  const ex = (CONFIG.outerRadius + 30) * view.scale;
+  const ey = (CONFIG.outerRadius * Math.sin(maxTilt) + 40) * view.scale;
+  const score = (x, y) => {
+    const e = ((x - view.cx) / ex) ** 2 + ((y - view.cy) / ey) ** 2;
+    if (L.avoidMobile && e < 1) return -1;
+    let d = Infinity;
+    for (const st of s.lapStars)
+      d = Math.min(d, Math.hypot(st.x * width - x, st.y * height - y));
+    return d;
+  };
+  // best-candidate: 기존 별들과의 최소 거리가 가장 큰 후보를 고른다
+  let best = null;
+  let bestScore = -Infinity;
+  for (let k = 0; k < L.candidates * 3; k++) {
+    const x = mix(pad, width - pad, rand());
+    const y = mix(pad, height - pad, rand());
+    const sc = score(x, y);
+    if (sc > bestScore) {
+      best = { x, y };
+      bestScore = sc;
+    }
+    if (k >= L.candidates - 1 && bestScore >= L.minGap * m) break;
+  }
+  s.lapStars.push({
+    def,
+    x: best.x / width,
+    y: best.y / height,
+    born: step,
+    phase: rand(),
+    period: mix(L.breathePeriod[0], L.breathePeriod[1], rand()),
+  });
+}
+
+function drawLapStars(s, alpha) {
+  if (!s.lapStars.length) return;
+  const L = CONFIG.lapStars;
+  const now = s.step + alpha;
+  const gain = twinkleGain(s); // 마지막 장면에서 은은한 변화도 잦아든다
+  for (const st of s.lapStars) {
+    const name = st.def.fill;
+    const x = st.x * width;
+    const y = st.y * height;
+    const R0 = st.def.radius * L.sizeRatio * view.scale;
+    const age = (now - st.born) * STEP_SEC;
+    const t = clamp01(age / L.flashSeconds);
+    const flash = (1 - t) * (1 - t); // 생길 때 1 → 0
+    const appear = smooth01(age / 0.15); // 0.15초 만에 켜짐
+    // 은은하게 숨 쉬기: 1(가장 밝음) ~ 1 - breathe
+    const wave = 0.5 * (1 - Math.cos(TURN * (starClock / st.period + st.phase)));
+    const glow = 1 - L.breathe * gain * wave;
+
+    noStroke();
+    for (const h of L.halo) {
+      setFill(name, Math.min(1, h.alpha * glow * (1 + L.flashHalo * flash)) * appear);
+      circle(x, y, 2 * R0 * h.size * (1 + 0.3 * flash));
+    }
+    setFill(name, appear);
+    circle(x, y, 2 * R0 * (1 + L.flashGrow * flash) * appear);
+
+    // 반짝: 얇은 링이 퍼지며 사라진다
+    if (t < 1) {
+      const reach = 1 - (1 - t) ** 3;
+      noFill();
+      setStroke(name, L.ringAlpha * (1 - t) * appear);
+      strokeWeight(view.lw);
+      circle(x, y, 2 * R0 * mix(1.3, L.ringReach, reach));
+      noStroke();
+    }
+  }
+}
+
 function renderScene(s, alpha) {
   background(rgb.bg[0], rgb.bg[1], rgb.bg[2]);
   drawStars(twinkleGain(s));
   if (!s) return;
+  // 공전 별은 배경 (모빌보다 뒤)
+  drawLapStars(s, alpha);
 
+  // 모빌 스프링 사슬의 세로 변위: 마디 0 = 태양, 마디 i+1 = 궤도 i
+  const sunY = view.cy + s.chain.at(0, alpha) * view.scale;
   const frames = s.orbits.map((o) => {
     const theta = mix(o.prevTheta, o.theta, alpha);
     const ang = o.tilt + theta;
     const phi = mix(o.prevPhi, o.phi, alpha);
     const p = project(o.r * Math.cos(phi), o.r * Math.sin(phi), ang);
+    const cy = view.cy + s.chain.at(o.i + 1, alpha) * view.scale;
     return {
       o,
       ang,
-      pts: projectOrbit(o, ang),
+      pts: projectOrbit(o, ang, cy),
       x: view.cx + p.x * view.scale,
-      y: view.cy + p.y * view.scale,
+      y: cy + p.y * view.scale,
       z: p.z,
       zn: p.z / o.r,
     };
@@ -965,7 +1206,7 @@ function renderScene(s, alpha) {
   const front = frames.filter((f) => f.z >= 0).sort((a, b) => a.z - b.z);
   for (const f of back) drawPlanet(f);
   // (3) 태양
-  drawSun();
+  drawSun(sunY);
   // (4) 앞쪽 호
   for (const f of frames) drawArcs(f.pts, true, "warm", view.lw);
   // (5) 앞쪽 행성
@@ -974,17 +1215,17 @@ function renderScene(s, alpha) {
   if (params.debug) drawDebug(s);
 }
 
-function drawSun() {
+function drawSun(cy) {
   const S = CONFIG.sun;
   const r = S.radius * view.scale;
   noStroke();
   setFill("red");
-  circle(view.cx, view.cy, r * 2);
+  circle(view.cx, cy, r * 2);
   noFill();
   strokeWeight(view.lw);
   for (const ring of S.rings) {
     setStroke("orange", ring.alpha);
-    circle(view.cx, view.cy, (S.radius + ring.offset) * view.scale * 2);
+    circle(view.cx, cy, (S.radius + ring.offset) * view.scale * 2);
   }
 }
 
