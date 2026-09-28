@@ -5,12 +5,15 @@
     <!-- 모바일 필수: 폰에서 PC용 화면처럼 축소되는 것 방지 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
     <title>Homework1</title>
-    <script src="https://cdn.jsdelivr.net/npm/p5@2/lib/p5.min.js"></script>
+    <!-- 이 스케치는 p5 1.9.x + Matter.js 0.19.0 기준으로 작성됨 -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
     <style>
       html, body {
         height: 100%;
         margin: 0;
         overflow: hidden;
+        background-color: #0a0a0a;
       }
       /* 터치 필수: 브라우저가 스크롤/확대 대신 코드에 터치를 넘기도록 함.
          iOS Safari는 canvas가 아니라 body에 걸어야 인정함 */
@@ -22,6 +25,7 @@
         -webkit-touch-callout: none;
       }
       canvas {
+        display: block;
         touch-action: none;
       }
     </style>
