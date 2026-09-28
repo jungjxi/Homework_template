@@ -34,7 +34,7 @@ const CONFIG = {
   iterations: { position: 12, velocity: 10, constraint: 10 },
 
   colors: {
-    bg: "#0A0A0A",
+    bg: "#000000",
     warm: "#EFE6D2",
     blue: "#293379", // Blue Crate
     red: "#B81817", // Tomato Red
