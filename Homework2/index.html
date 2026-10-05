@@ -1,36 +1,168 @@
 <!doctype html>
-<html>
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <!-- 모바일 필수: 폰에서 PC용 화면처럼 축소되는 것 방지 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
     <title>Homework2</title>
-    <script src="https://cdn.jsdelivr.net/npm/p5@2/lib/p5.min.js"></script>
     <style>
-      html, body {
-        height: 100%;
+      html,
+      body {
+        padding: 0;
         margin: 0;
+        height: 100%;
+        background-color: #ffffff;
         overflow: hidden;
+        overscroll-behavior: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
       }
       /* 터치 필수: 브라우저가 스크롤/확대 대신 코드에 터치를 넘기도록 함.
          iOS Safari는 canvas가 아니라 body에 걸어야 인정함 */
       body {
         touch-action: none;
-        overscroll-behavior: none;
+      }
+      /* 화이트 큐브 벽: 작품 캔버스를 가운데에 건다 (사방 여백은 sketch.js 에서 계산) */
+      #frame {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        display: block;
+        touch-action: none;
         -webkit-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
       }
-      canvas {
-        touch-action: none;
+
+      /* ---------------- 엔딩: 화면 전체 암전 ---------------- */
+      #ending {
+        position: fixed;
+        inset: 0;
+        visibility: hidden;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      #ending .shade {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        opacity: 0;
+      }
+      #ending .content {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #ending .title {
+        margin: 0;
+        color: #fff;
+        font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+        font-weight: 400;
+        font-size: 30px;
+        line-height: 1;
+        letter-spacing: 0.2em;
+        padding-left: 0.2em; /* letter-spacing 이 오른쪽에만 붙는 것 보정 */
+        white-space: pre;
+        visibility: hidden;
+      }
+      #ending.typing .title {
+        visibility: visible;
+      }
+      #ending .rest {
+        visibility: hidden;
+      }
+      #ending .caret {
+        position: relative;
+        display: inline-block;
+        width: 0;
+      }
+      #ending .caret::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: -0.16em;
+        width: 0.62em;
+        height: 0.08em;
+        background: #fff;
+      }
+      #ending.done .caret::after {
+        animation: caret 1.05s steps(1) infinite;
+      }
+      @keyframes caret {
+        50% {
+          opacity: 0;
+        }
+      }
+      #ending .restart {
+        margin-top: 44px;
+        padding: 9px 12px 9px calc(12px + 0.3em);
+        font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.3em;
+        color: rgba(255, 255, 255, 0.55);
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0;
+        cursor: pointer;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 1.4s ease,
+          color 0.3s ease,
+          border-color 0.3s ease;
+      }
+      #ending.show-restart .restart {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      #ending .restart:hover,
+      #ending .restart:focus-visible {
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.6);
+        outline: none;
       }
     </style>
+    <!-- 이 스케치는 p5 2.3.x + Matter.js 0.20.0 기준으로 작성됨 -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@2.3.3/lib/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/GrainTexture.js"></script>
+    <script src="js/TrashBag.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/SoilParticle.js"></script>
+    <script src="js/Shovel.js"></script>
+    <script src="js/Fish.js"></script>
+    <script src="js/scenes/Scene.js"></script>
+    <script src="js/scenes/BurnScene.js"></script>
+    <script src="js/scenes/BuryScene.js"></script>
+    <script src="js/scenes/SinkScene.js"></script>
+    <script src="js/AppState.js"></script>
+    <script src="js/EndingUI.js"></script>
+    <script src="sketch.js"></script>
   </head>
+
   <body>
     <script>
       // 터치 필수: Safari는 CSS만으로는 드래그 스크롤을 완전히 못 막아서 스크립트로 한 번 더 차단
       document.addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
     </script>
-    <script src="sketch.js"></script>
+    <main id="frame"></main>
+    <div id="ending">
+      <div class="shade"></div>
+      <div class="content">
+        <p class="title"><span class="typed"></span><span class="caret"></span><span class="rest"></span></p>
+        <button class="restart" type="button">RESTART</button>
+      </div>
+    </div>
   </body>
 </html>
