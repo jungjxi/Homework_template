@@ -46,6 +46,11 @@
     [35, '더웠어요'],
     [40, '뜨거웠어요'],
   ];
+  // The prompt on the first sheet asks about that feeling: '따뜻했어요' → '왜 따뜻했나요?'
+  function askFor(t) {
+    return '왜 ' + feelFor(t).replace(/어요$/, '나요?');
+  }
+
   function feelFor(t) {
     const v = Math.round(t);
     for (const [max, text] of FEELS) if (v <= max) return text;
@@ -475,6 +480,7 @@
     ORDER,
     typeFor,
     feelFor,
+    askFor,
     colorsFor,
     paperFor,
     newNoteId,

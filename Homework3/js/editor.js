@@ -189,6 +189,8 @@
       const feel = G.feelFor(t);
       this.degEl.textContent = U.fmtTemp(t);
       this.feelEl.textContent = feel;
+      const first = this.list.querySelector('.note-sheet > textarea');
+      if (first) first.placeholder = G.askFor(t);
       this.thermo.setAttribute('aria-valuenow', String(t));
       this.thermo.setAttribute('aria-valuetext', `${U.fmtTemp(t)}, ${feel}, ${T.name}`);
       this.typeEl.textContent = T.name;
@@ -227,7 +229,7 @@
       li.innerHTML =
         '<div class="note-sheet">' +
         '<span class="note-tape" aria-hidden="true"></span>' +
-        `<textarea rows="2" spellcheck="false" autocomplete="off" placeholder="${index === 0 ? '떠오른 생각을 적어 보세요' : '같은 온도의 다른 생각도 적어 보세요'}"></textarea>` +
+        `<textarea rows="2" spellcheck="false" autocomplete="off" placeholder="${U.esc(this.promptFor(index))}"></textarea>` +
         `<button class="note-del" type="button" aria-label="이 쪽지 떼어내기">${ICON_X}</button>` +
         '<div class="note-actions"><button class="tail-add" type="button">+ 꼬리 생각 추가</button></div>' +
         '</div>' +
@@ -363,8 +365,16 @@
       }
     }
 
+    promptFor(index) {
+      return index === 0 && this.draft ? G.askFor(this.draft.temperature) : '같은 온도의 다른 생각도 적어 보세요';
+    }
+
     renumber() {
-      this.noteEls().forEach((li, i) => li.querySelector('textarea').setAttribute('aria-label', `쪽지 ${i + 1}`));
+      this.noteEls().forEach((li, i) => {
+        const ta = li.querySelector('.note-sheet > textarea');
+        ta.setAttribute('aria-label', `쪽지 ${i + 1}`);
+        ta.placeholder = this.promptFor(i);
+      });
     }
 
     autosize(ta) {
