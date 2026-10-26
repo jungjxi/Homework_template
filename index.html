@@ -3,11 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <!-- 모바일 필수: 이 태그가 없으면 폰에서 PC용 화면처럼 축소되어 터치가 스크롤/확대로 해석됨 -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
     <title>과제 모음</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
     <style>
+      :root {
+        --menu-w: 52px;
+        --ink: #111;
+        --mute: #9a9a9a;
+        --line: #e6e6e6;
+        --hover: #f4f4f4;
+      }
+
       /* 허브 페이지는 절대 스크롤/선택되지 않게 고정 (아이폰에서 터치가 페이지 스크롤로 새는 것 방지) */
-      html, body {
+      html,
+      body {
         height: 100%;
         margin: 0;
         overflow: hidden;
@@ -15,34 +29,80 @@
         -webkit-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
-        font-family: sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        background: #fff;
+        color: var(--ink);
+        font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
-      /* 왼쪽 메뉴 */
+
+      /* 왼쪽 메뉴: 좁은 세로 띠, 오른쪽에 얇은 구분선 하나 */
       #menu {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100px;
-        height: 100%;
-        padding: 20px;
+        bottom: 0;
+        width: var(--menu-w);
         box-sizing: border-box;
+        padding: max(16px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom)) env(safe-area-inset-left);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-right: 1px solid var(--line);
         background: #fff;
       }
-      #menu a {
-        display: block;
-        margin-bottom: 10px;
+
+      #menu button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 48px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--mute);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
         cursor: pointer;
-        color: blue;
+        touch-action: manipulation;
+        transition: color 0.15s, background-color 0.15s;
       }
-      /* iframe 영역: 메뉴(100px)를 뺀 나머지 화면 전체 */
+
+      #menu button:hover {
+        color: var(--ink);
+        background: var(--hover);
+      }
+
+      #menu button[aria-current='page'] {
+        color: #fff;
+        background: var(--ink);
+        font-weight: 600;
+      }
+
+      #menu button:focus-visible {
+        outline: 1px solid var(--ink);
+        outline-offset: -4px;
+      }
+
+      #menu button[aria-current='page']:focus-visible {
+        outline-color: #fff;
+      }
+
+      /* iframe 영역: 메뉴를 뺀 나머지 화면 전체 */
       #stage {
         position: fixed;
         top: 0;
         right: 0;
         bottom: 0;
-        left: 100px;
+        left: var(--menu-w);
         overflow: hidden;
       }
+
       #viewer {
         display: block;
         width: 100%;
@@ -52,22 +112,31 @@
     </style>
   </head>
   <body>
-    <div id="menu">
-      <a onclick="loadHomework('Homework1')">Homework1</a>
-      <a onclick="loadHomework('Homework2')">Homework2</a>
-      <a onclick="loadHomework('Homework3')">Homework3</a>
-    </div>
+    <nav id="menu" aria-label="과제">
+      <button type="button" data-folder="Homework1" aria-label="Homework1" aria-current="page">1</button>
+      <button type="button" data-folder="Homework2" aria-label="Homework2">2</button>
+      <button type="button" data-folder="Homework3" aria-label="Homework3 중간과제">중간</button>
+    </nav>
 
     <div id="stage">
       <!-- 처음 열었을 때 보여줄 과제 -->
-      <iframe id="viewer" src="Homework1/index.html"></iframe>
+      <iframe id="viewer" src="Homework1/index.html" title="과제 화면"></iframe>
     </div>
 
     <script>
       // 메뉴 클릭 시 iframe에 해당 폴더의 index.html을 불러옴
       function loadHomework(folderName) {
         document.getElementById("viewer").src = folderName + "/index.html";
+        document.querySelectorAll("#menu button").forEach(function (b) {
+          if (b.dataset.folder === folderName) b.setAttribute("aria-current", "page");
+          else b.removeAttribute("aria-current");
+        });
       }
+
+      document.getElementById("menu").addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-folder]");
+        if (b) loadHomework(b.dataset.folder);
+      });
     </script>
   </body>
 </html>
